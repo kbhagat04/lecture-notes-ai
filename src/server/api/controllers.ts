@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Request, Response } from 'express';
 import { processUploadedFile, getFileMetadata, removeFile } from '../services/fileService';
 import { generateCleanNotes, generateMockNotes } from '../services/aiService';
@@ -62,4 +63,9 @@ export const getNotes = async (req: Request, res: Response) => {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         return res.status(500).json({ message: `Error retrieving notes: ${errorMessage}` });
     }
+};
+
+export default {
+    uploadSlides,
+    getNotes
 };

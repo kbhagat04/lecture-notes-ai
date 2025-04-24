@@ -7,7 +7,7 @@ import axios, { AxiosError } from 'axios';
 // API base URL - automatically detect if we're in production or development
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
     ? '/api' 
-    : 'http://localhost:5001/api';
+    : 'http://localhost:5003/api';
 
 const App = () => {
     const [slides, setSlides] = useState<File | null>(null);
