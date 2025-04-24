@@ -1,0 +1,23 @@
+# Node modules
+node_modules
+npm-debug.log
+
+# Build outputs
+dist
+build
+
+# Environment files with sensitive information
+.env
+.env.local
+
+# Git-related
+.git
+.gitignore
+
+# IDE files
+.vscode
+.idea
+
+# System files
+.DS_Store
+Thumbs.db
