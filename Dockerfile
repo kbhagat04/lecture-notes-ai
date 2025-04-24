@@ -16,6 +16,9 @@ COPY . .
 # Build the application
 RUN npm run build
 
+# Verify the build directory exists
+RUN ls -la && ls -la build
+
 # Set production environment
 ENV NODE_ENV=production
 

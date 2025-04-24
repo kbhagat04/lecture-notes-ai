@@ -3,6 +3,7 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import routes from './api/routes';
 import dotenv from 'dotenv';
 
@@ -26,13 +27,33 @@ app.use('/api', routes);
 
 // For production: Serve static files from the React build
 if (process.env.NODE_ENV === 'production') {
-  // Serve the static files from the React app build directory
-  app.use(express.static(path.join(__dirname, '../../build')));
+  // Check possible build directory locations
+  const buildPath = path.join(__dirname, '../../build');
+  const altBuildPath = path.join(process.cwd(), 'build');
   
-  // For any request that doesn't match an API route, send the React app
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../build', 'index.html'));
-  });
+  let staticPath = '';
+  
+  if (fs.existsSync(buildPath)) {
+    console.log('Using build path: ', buildPath);
+    staticPath = buildPath;
+  } else if (fs.existsSync(altBuildPath)) {
+    console.log('Using alternative build path: ', altBuildPath);
+    staticPath = altBuildPath;
+  } else {
+    console.error('Could not find build directory!');
+    console.log('Current directory structure:');
+    console.log(fs.readdirSync(process.cwd()));
+  }
+  
+  if (staticPath) {
+    // Serve the static files from the React app build directory
+    app.use(express.static(staticPath));
+    
+    // For any request that doesn't match an API route, send the React app
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(staticPath, 'index.html'));
+    });
+  }
   
   console.log('Running in production mode - serving static React app');
 } else {
