@@ -19,8 +19,11 @@ RUN npm run build
 # Set production environment
 ENV NODE_ENV=production
 
-# Expose the port the app runs on
-EXPOSE 5002
+# Use PORT environment variable with fallback to 5002
+ENV PORT=5002
+
+# Expose the port from the environment variable
+EXPOSE $PORT
 
 # Command to run the application
 CMD ["npm", "start"]

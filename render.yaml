@@ -1,14 +1,15 @@
 services:
   - type: web
     name: lecture-notes-ai
-    env: node
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    env: docker
+    dockerfilePath: ./Dockerfile # Path to your Dockerfile
     envVars:
       - key: NODE_ENV
         value: production
       - key: GEMINI_API_KEY
         sync: false # This means the value will be entered manually in the Render dashboard
+      - key: PORT
+        value: 3000
     plan: free # Start with the free tier
     healthCheckPath: /api/health # Optional: add a health check endpoint
     autoDeploy: true # Auto-deploy on changes to your GitHub repo
