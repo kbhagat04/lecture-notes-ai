@@ -5,7 +5,20 @@ FROM node:23-alpine
 WORKDIR /usr/src/app
 
 # Install debugging tools
-RUN apk add --no-cache bash curl
+RUN apk add --no-cache \
+    bash \
+    curl \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+# Set environment variables for Puppeteer
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+# Fix the path to match Alpine's Chromium location
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Copy package.json and package-lock.json
 COPY package*.json ./

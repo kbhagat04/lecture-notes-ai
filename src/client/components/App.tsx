@@ -59,6 +59,33 @@ const App = () => {
         }
     };
 
+    const handleDownloadPdf = async () => {
+        try {
+            setLoading(true);
+            
+            const response = await axios.post(
+                `${API_BASE_URL}/download-pdf`, 
+                { markdown: notes },
+                { responseType: 'blob' }
+            );
+            
+            // Create a download link
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `notes-${slides?.name.split('.')[0] || 'lecture'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (err) {
+            console.error('Error downloading PDF:', err);
+            setError('Failed to download PDF. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="app">
             <h1>Lecture Notes AI</h1>
@@ -93,7 +120,7 @@ const App = () => {
             )}
             
             {success && notes && (
-                <div style={{ textAlign: 'center', margin: '20px 0' }}>
+                <div style={{ textAlign: 'center', margin: '20px 0', display: 'flex', justifyContent: 'center', gap: '15px' }}>
                     <button 
                         onClick={() => {
                             const blob = new Blob([notes], { type: 'text/markdown' });
@@ -108,7 +135,14 @@ const App = () => {
                         className="upload-btn"
                         style={{ marginTop: '20px' }}
                     >
-                        Download Notes as Markdown
+                        Download as Markdown
+                    </button>
+                    <button 
+                        onClick={handleDownloadPdf}
+                        className="upload-btn"
+                        style={{ marginTop: '20px', backgroundColor: '#3d5a80' }}
+                    >
+                        Download as PDF
                     </button>
                 </div>
             )}

@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import { processUploadedFile, getFileMetadata, removeFile } from '../services/fileService';
 import { generateCleanNotes, generateMockNotes } from '../services/aiService';
+import { generatePdfFromMarkdown } from '../services/pdfService';
 
 export const uploadSlides = async (req: Request, res: Response) => {
     try {
@@ -65,7 +66,32 @@ export const getNotes = async (req: Request, res: Response) => {
     }
 };
 
+export const downloadNotesPdf = async (req: Request, res: Response) => {
+    try {
+        const { markdown } = req.body;
+        
+        if (!markdown) {
+            return res.status(400).json({ message: 'No markdown content provided.' });
+        }
+        
+        console.log('Generating PDF from markdown...');
+        const pdfBuffer = await generatePdfFromMarkdown(markdown);
+        
+        // Set response headers for PDF download
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=lecture-notes.pdf');
+        
+        // Send the PDF buffer
+        return res.send(pdfBuffer);
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        return res.status(500).json({ message: `Error generating PDF: ${errorMessage}` });
+    }
+};
+
 export default {
     uploadSlides,
-    getNotes
+    getNotes,
+    downloadNotesPdf
 };

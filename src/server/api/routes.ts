@@ -22,4 +22,7 @@ router.get('/health', (req: any, res: any) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Add this route to your routes
+router.post('/download-pdf', controllers.downloadNotesPdf);
+
 export default router;
