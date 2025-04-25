@@ -16,6 +16,7 @@ const App = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [aiUsed, setAiUsed] = useState(true);
+    const [pdfGenerating, setPdfGenerating] = useState(false);
 
     const handleFileUpload = async (file: File, useAI: boolean) => {
         setSlides(file);
@@ -61,7 +62,8 @@ const App = () => {
 
     const handleDownloadPdf = async () => {
         try {
-            setLoading(true);
+            setPdfGenerating(true);
+            setError('');
             
             const response = await axios.post(
                 `${API_BASE_URL}/download-pdf`, 
@@ -82,7 +84,7 @@ const App = () => {
             console.error('Error downloading PDF:', err);
             setError('Failed to download PDF. Please try again.');
         } finally {
-            setLoading(false);
+            setPdfGenerating(false);
         }
     };
 
@@ -106,9 +108,9 @@ const App = () => {
             
             {error && <div className="error">{error}</div>}
             
-            {slides && <Slides file={slides} />}
+            {slides && !loading && <Slides file={slides} />}
             
-            {notes && (
+            {notes && !loading && (
                 <>
                     <Notes notes={notes} />
                     {!aiUsed && (
@@ -119,7 +121,15 @@ const App = () => {
                 </>
             )}
             
-            {success && notes && (
+            {pdfGenerating && (
+                <div className="loading pdf-loading">
+                    <div className="spinner"></div>
+                    <p>Generating your PDF...</p>
+                    <p className="loading-hint">This may take a few moments</p>
+                </div>
+            )}
+            
+            {success && notes && !loading && (
                 <div style={{ textAlign: 'center', margin: '20px 0', display: 'flex', justifyContent: 'center', gap: '15px' }}>
                     <button 
                         onClick={() => {
@@ -134,6 +144,7 @@ const App = () => {
                         }}
                         className="upload-btn"
                         style={{ marginTop: '20px' }}
+                        disabled={pdfGenerating}
                     >
                         Download as Markdown
                     </button>
@@ -141,8 +152,9 @@ const App = () => {
                         onClick={handleDownloadPdf}
                         className="upload-btn"
                         style={{ marginTop: '20px', backgroundColor: '#3d5a80' }}
+                        disabled={pdfGenerating}
                     >
-                        Download as PDF
+                        {pdfGenerating ? 'Generating PDF...' : 'Download as PDF'}
                     </button>
                 </div>
             )}

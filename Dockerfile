@@ -4,21 +4,12 @@ FROM node:23-alpine
 # Create app directory
 WORKDIR /usr/src/app
 
-# Install debugging tools
+# Install only the necessary dependencies for PDFKit
 RUN apk add --no-cache \
     bash \
     curl \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont
-
-# Set environment variables for Puppeteer
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-# Fix the path to match Alpine's Chromium location
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    fontconfig \
+    ca-certificates
 
 # Copy package.json and package-lock.json
 COPY package*.json ./
