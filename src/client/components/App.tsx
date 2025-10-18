@@ -15,21 +15,18 @@ const App = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
-    const [aiUsed, setAiUsed] = useState(true);
     const [pdfGenerating, setPdfGenerating] = useState(false);
 
-    const handleFileUpload = async (file: File, useAI: boolean) => {
+    const handleFileUpload = async (file: File) => {
         setSlides(file);
         setLoading(true);
         setError('');
         setSuccess(false);
         setNotes('');
-        setAiUsed(useAI);
         
         // Create form data to send to the API
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('useAI', useAI.toString());
         
         try {
             const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
@@ -98,11 +95,7 @@ const App = () => {
             {loading && (
                 <div className="loading">
                     <p>Processing your slides... This may take a moment.</p>
-                    {aiUsed ? (
-                        <p>The AI is analyzing your content and generating comprehensive notes.</p>
-                    ) : (
-                        <p>Generating mock notes to save API credits.</p>
-                    )}
+                    <p>The AI is analyzing your content and generating comprehensive notes.</p>
                 </div>
             )}
             
@@ -111,14 +104,7 @@ const App = () => {
             {slides && !loading && <Slides file={slides} />}
             
             {notes && !loading && (
-                <>
-                    <Notes notes={notes} />
-                    {!aiUsed && (
-                        <div style={{ textAlign: 'center', margin: '10px 0', padding: '8px', backgroundColor: '#fff3cd', color: '#856404', borderRadius: '4px' }}>
-                            <p style={{ margin: '0' }}>⚠️ Note: These are mock notes generated without AI processing.</p>
-                        </div>
-                    )}
-                </>
+                <Notes notes={notes} />
             )}
             
             {pdfGenerating && (

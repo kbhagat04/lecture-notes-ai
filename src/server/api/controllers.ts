@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { Request, Response } from 'express';
-import { processUploadedFile, getFileMetadata, removeFile } from '../services/fileService';
-import { generateCleanNotes, generateMockNotes } from '../services/aiService';
+import { processUploadedFile, removeFile } from '../services/fileService';
+import { generateCleanNotes } from '../services/aiService';
 import { generatePdfFromMarkdown } from '../services/pdfService';
 
 export const uploadSlides = async (req: Request, res: Response) => {
@@ -11,29 +11,15 @@ export const uploadSlides = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'No file uploaded.' });
         }
 
-        // Debug: Log the entire request body to see what's being received
-        console.log('Request body:', req.body);
-        
-        // Check if AI processing should be used
-        const useAIParam = req.body.useAI;
-        const useAI = useAIParam !== 'false';
-        
-        // Debug: Log the parsed parameters
-        console.log(`useAI parameter received: "${useAIParam}" (${typeof useAIParam})`);
-        console.log(`Processing file with AI: ${useAI ? 'Yes' : 'No'}`);
+        // Log request receipt
+        console.log('Request body received for upload.');
 
         // Process the file in memory (no file is saved to disk)
         const fileId = await processUploadedFile(file);
         
-        // Generate notes based on useAI parameter
-        let notes;
-        if (useAI) {
-            console.log('Using AI processing...');
-            notes = await generateCleanNotes(fileId);
-        } else {
-            console.log('Using mock notes (AI disabled)...');
-            notes = await generateMockNotes(fileId);
-        }
+    // AI processing
+    console.log('Using AI processing...');
+        const notes = await generateCleanNotes(fileId);
         
         // Remove file from memory after processing
         removeFile(fileId);
@@ -41,8 +27,7 @@ export const uploadSlides = async (req: Request, res: Response) => {
         return res.status(200).json({ 
             notes,
             fileId,
-            fileName: file.originalname,
-            aiProcessed: useAI
+            fileName: file.originalname
         });
     } catch (error) {
         console.error('Error in uploadSlides controller:', error);

@@ -69,15 +69,6 @@ export const processLectureSlides = async (buffer: Buffer, mimeType: string, fil
     
     console.log(`Starting Gemini processing for file: ${fileName} (${mimeType})`);
     
-    // Use gemini-1.5-flash instead of the deprecated gemini-pro-vision model
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 8192,
-      }
-    });
-    
     // Safety settings
     const safetySettings = [
       {
@@ -89,6 +80,16 @@ export const processLectureSlides = async (buffer: Buffer, mimeType: string, fil
         threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
       },
     ];
+    
+    // Use gemini-2.5-flash instead of the deprecated gemini-pro-vision model
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 8192,
+      },
+      safetySettings
+    });
     
     // Convert the file buffer to a format that Gemini API can understand
     const filePart = await fileToGenerativePart(buffer, mimeType);
@@ -107,7 +108,7 @@ export const processLectureSlides = async (buffer: Buffer, mimeType: string, fil
 
     Here are the lecture slides from file: ${fileName}. Generate clear, concise notes from this content.`;
 
-    console.log("Sending request to Gemini API using the gemini-1.5-flash model...");
+  console.log("Sending request to Gemini API using the gemini-2.5-flash model...");
     
     // Generate content using Gemini
     const result = await model.generateContent([prompt, filePart]);
