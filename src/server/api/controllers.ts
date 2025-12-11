@@ -40,7 +40,8 @@ export const uploadSlides = async (req: Request, res: Response) => {
         // Increment cumulative usage for Gemini (if enabled) — use daily key so counters reset each day
         try {
             const geminiTotalEnabled = String(process.env.GEMINI_TOTAL_ENABLED || 'false').toLowerCase() === 'true';
-            if ((provider === 'gemini' || process.env.AI_PROVIDER === 'gemini') && geminiTotalEnabled) {
+            // Only increment when the request explicitly used Gemini as the provider.
+            if (provider === 'gemini' && geminiTotalEnabled) {
                 const clientIdFromBody = req.body && req.body.clientId ? String(req.body.clientId) : null;
                 const ip = (req.headers['x-forwarded-for'] || req.ip || req.connection?.remoteAddress || 'unknown').toString();
                 const client = clientIdFromBody || ip;
