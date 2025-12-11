@@ -21,15 +21,16 @@ const Slides: React.FC<SlidesProps> = ({ file }) => {
     };
 
     return (
-        <div className="slides-container">
-            <h2>Uploaded Slide File</h2>
-            <div className="file-info">
-                <p><strong>{getFileIcon(file.type)} File name:</strong> {file.name}</p>
-                <p><strong>File type:</strong> {file.type || 'Unknown'}</p>
-                <p><strong>File size:</strong> {formatFileSize(file.size)}</p>
-                <p><strong>Last modified:</strong> {new Date(file.lastModified).toLocaleString()}</p>
+        <div className="slides-card">
+            <div className="file-icon">{getFileIcon(file.type)}</div>
+            <div className="file-details">
+                <h3>{file.name}</h3>
+                <div className="file-meta">
+                    <span>{formatFileSize(file.size)}</span>
+                    <span>•</span>
+                    <span>{file.type || 'Unknown Type'}</span>
+                </div>
             </div>
-            <p className="note">Your file is being processed. The AI-generated notes will appear below when ready.</p>
         </div>
     );
 };

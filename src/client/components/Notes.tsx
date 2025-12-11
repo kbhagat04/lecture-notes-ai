@@ -1,21 +1,24 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 interface NotesProps {
     notes: string;
 }
 
 const Notes: React.FC<NotesProps> = ({ notes }) => {
-    // Simple component to render the markdown content without the problematic plugins
+    // Simple component to render the markdown content
     return (
-        <div className="notes-container">
-            <h2>Cleaned Notes</h2>
-            <div className="notes-content">
-                {/* Using a simpler configuration to avoid plugin compatibility issues */}
+        <div className="notes-card">
+            <div className="notes-header">
+                <h2>📚 AI Generated Notes</h2>
+            </div>
+            <div className="markdown-body" id="notes-content">
                 <ReactMarkdown 
-                    className="markdown-content"
-                    rehypePlugins={[rehypeSanitize]}
+                    remarkPlugins={[remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
                 >
                     {notes}
                 </ReactMarkdown>

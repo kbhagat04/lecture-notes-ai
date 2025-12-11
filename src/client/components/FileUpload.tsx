@@ -22,24 +22,29 @@ const FileUpload: React.FC<{
     };
 
     return (
-        <div className="file-upload">
-            <label htmlFor="file-input" className="file-input-label">
-                Choose File
-            </label>
-            <input
-                id="file-input"
-                type="file"
-                accept=".pdf,.ppt,.pptx,.jpg,.jpeg,.png"
-                onChange={handleFileChange}
-            />
+        <div className="file-upload-card">
+            <div className="upload-icon">☁️</div>
+            
+            <div className="file-input-wrapper">
+                <label htmlFor="file-input" className="file-input-label">
+                    Choose File
+                </label>
+                <input
+                    id="file-input"
+                    type="file"
+                    accept=".pdf,.ppt,.pptx,.jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                />
+            </div>
+            
             {selectedFile && (
-                <div className="file-name-display">
-                    Selected: {selectedFile.name}
+                <div className="selected-file">
+                    <span>📄</span> {selectedFile.name}
                 </div>
             )}
             
             <button 
-                className="upload-btn"
+                className="action-btn"
                 onClick={handleUpload} 
                 disabled={!selectedFile}
             >
