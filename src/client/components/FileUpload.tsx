@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 
-const FileUpload: React.FC<{ 
-    onFileUpload: (file: File) => void 
-}> = ({ onFileUpload }) => {
+const FileUpload: React.FC<{
+    onFileUpload: (file: File) => void,
+    disabled?: boolean
+}> = ({ onFileUpload, disabled = false }) => {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,6 +35,7 @@ const FileUpload: React.FC<{
                     type="file"
                     accept=".pdf,.ppt,.pptx,.jpg,.jpeg,.png"
                     onChange={handleFileChange}
+                    disabled={disabled}
                 />
             </div>
             
@@ -46,9 +48,9 @@ const FileUpload: React.FC<{
             <button 
                 className="action-btn"
                 onClick={handleUpload} 
-                disabled={!selectedFile}
+                disabled={!selectedFile || disabled}
             >
-                Process Slides
+                {disabled ? 'Processing...' : 'Process Slides'}
             </button>
         </div>
     );
