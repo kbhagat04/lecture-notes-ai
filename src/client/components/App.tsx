@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import FileUpload from './FileUpload';
 import Notes from './Notes';
 import Slides from './Slides';
+const Chat = React.lazy(() => import('./Chat'));
 import axios, { AxiosError } from 'axios';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
@@ -17,6 +18,7 @@ const App = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [fileIdState, setFileIdState] = useState<string | null>(null);
     const [pdfGenerating, setPdfGenerating] = useState(false);
     const [provider, setProvider] = useState<'gemini' | 'openrouter'>('gemini');
     // Using Gemini 2.0 Flash - the only free model that properly supports PDF input
@@ -114,6 +116,7 @@ const App = () => {
             // Update notes with response from API
             setNotes(response.data.notes);
             setSuccess(true);
+            setFileIdState(response.data.fileId || null);
             // Refresh usage after successful upload to show updated remaining
             try {
                 const usageRes = await fetch(`${API_BASE_URL}/usage?clientId=${encodeURIComponent(clientId)}&provider=gemini`);
@@ -249,7 +252,15 @@ const App = () => {
                 {slides && !loading && <Slides file={slides} />}
                 
                 {notes && !loading && (
-                    <Notes notes={notes} />
+                    <>
+                        <Notes notes={notes} />
+                        {fileIdState && (
+                            // Lazy-load Chat component to keep bundle small
+                            <React.Suspense fallback={<div>Loading chat...</div>}>
+                                <Chat fileId={fileIdState} />
+                            </React.Suspense>
+                        )}
+                    </>
                 )}
                 
                 {pdfGenerating && (

@@ -38,3 +38,10 @@ Thumbs.db
 # Temporary files
 *.log
 *.tmp
+
+# Application data (do not commit runtime state or local test data)
+/data/
+
+# Cache and build artifacts
+.cache/
+.next/

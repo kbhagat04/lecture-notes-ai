@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import { processUploadedFile, removeFile } from '../services/fileService';
 import { generateCleanNotes } from '../services/aiService';
+import { setNotes, getNotes as getStoredNotes } from '../services/notesStore';
 import { generatePdfFromMarkdown } from '../services/pdfService';
 import usageStore from '../services/usageStore';
 
@@ -20,9 +21,6 @@ export const uploadSlides = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'No file uploaded.' });
         }
 
-        // Log request receipt
-        console.log('Request body received for upload.');
-
         // Process the file in memory (no file is saved to disk)
         const fileId = await processUploadedFile(file);
         
@@ -30,14 +28,19 @@ export const uploadSlides = async (req: Request, res: Response) => {
         const provider = req.body.provider;
         const model = req.body.model;
 
-        // AI processing
-        console.log(`Using AI processing with provider: ${provider || 'default'}...`);
         const notes = await generateCleanNotes(fileId, provider, model);
         
+        // Persist notes for later QA / chat usage
+        try {
+            await setNotes(fileId, notes);
+        } catch (e) {
+            console.warn('Failed to persist notes:', e);
+        }
+
         // Remove file from memory after processing
         removeFile(fileId);
 
-        // Increment cumulative usage for Gemini (if enabled) — use daily key so counters reset each day
+        // Increment cumulative usage for Gemini (if enabled)
         try {
             const geminiTotalEnabled = String(process.env.GEMINI_TOTAL_ENABLED || 'false').toLowerCase() === 'true';
             // Only increment when the request explicitly used Gemini as the provider.
@@ -51,7 +54,7 @@ export const uploadSlides = async (req: Request, res: Response) => {
                 await usageStore.incrementUsage(client, providerKey);
             }
         } catch (err) {
-            console.error('Failed to increment usage store:', err);
+            console.warn('Failed to increment usage store:', (err as any)?.message || err);
         }
 
         return res.status(200).json({ 
@@ -60,12 +63,8 @@ export const uploadSlides = async (req: Request, res: Response) => {
             fileName: file.originalname
         });
     } catch (error) {
-        console.error('Error in uploadSlides controller:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        return res.status(500).json({ 
-            message: `Error processing file: ${errorMessage}`,
-            details: error instanceof Error ? error.stack : undefined
-        });
+        return res.status(500).json({ message: `Error processing file: ${errorMessage}` });
     } finally {
         inProgressMap.set(ip, false);
     }
@@ -74,9 +73,9 @@ export const uploadSlides = async (req: Request, res: Response) => {
 export const getNotes = async (req: Request, res: Response) => {
     try {
         const notesId = req.params.id;
-        // Logic to retrieve notes by ID can be implemented here
-        // For now, we will return a placeholder response
-        return res.status(200).json({ notes: 'Clean notes for the given ID.' });
+        const notes = await getStoredNotes(notesId);
+        if (!notes) return res.status(404).json({ message: 'Notes not found' });
+        return res.status(200).json({ notes });
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         return res.status(500).json({ message: `Error retrieving notes: ${errorMessage}` });
@@ -91,7 +90,6 @@ export const downloadNotesPdf = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'No markdown content provided.' });
         }
         
-        console.log('Generating PDF from markdown...');
         const pdfBuffer = await generatePdfFromMarkdown(markdown);
         
         // Set response headers for PDF download

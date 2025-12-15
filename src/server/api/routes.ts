@@ -1,19 +1,16 @@
 // @ts-nocheck
 import express from 'express';
-// Import controllers directly from the module file
-import controllers from './controllers'; 
+import controllers from './controllers';
 import multer from 'multer';
 import usageStore from '../services/usageStore';
+import notesStore from '../services/notesStore';
 
-// Fix the Router issue by using a different syntax that TypeScript can understand
 const router = express.Router?.() || require('express').Router();
 
-// Configure multer for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Simple in-memory rate limiter (per-IP+provider)
-// Uses a sliding window counter stored in memory. For production, swap for Redis/more robust store.
+// In-memory rate limiter (per-client and provider)
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000'); // default 1 minute
 const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '10');
 // Optional stricter defaults for Gemini to protect API usage
@@ -66,8 +63,7 @@ const rateLimiter = (req: any, res: any, next: any) => {
         rateMap.set(key, entry);
         return next();
     } catch (err) {
-        // If rate limiter errors, allow request through (fail open) but log
-        console.error('Rate limiter error:', err);
+        console.error('Rate limiter error:', (err as any)?.message || err);
         return next();
     }
 };
@@ -94,7 +90,7 @@ const totalLimiter = async (req: any, res: any, next: any) => {
 
         return next();
     } catch (err) {
-        console.error('Total limiter error:', err);
+        console.error('Total limiter error:', (err as any)?.message || err);
         return next();
     }
 };
@@ -115,7 +111,7 @@ const checkGeminiConfigured = (req: any, res: any, next: any) => {
         // Allow public access — rate limiter will protect abuse.
         return next();
     } catch (err) {
-        console.error('Gemini config check error:', err);
+        console.error('Gemini config check error:', (err as any)?.message || err);
         return res.status(500).json({ message: 'Internal server error' });
     }
 };
@@ -164,7 +160,7 @@ router.get('/usage', async (req: any, res: any) => {
 
             return res.json({ client, provider, used, max, remaining, enabled });
     } catch (err) {
-        console.error('Error in /usage route:', err);
+        console.error('Error in /usage route:', (err as any)?.message || err);
         return res.status(500).json({ message: 'Failed to get usage' });
     }
 });
@@ -176,5 +172,22 @@ router.get('/health', (req: any, res: any) => {
 
 // Add this route to your routes
 router.post('/download-pdf', controllers.downloadNotesPdf);
+
+// Chat endpoint: ask a question about a previously uploaded file
+router.post('/chat', async (req: any, res: any) => {
+    try {
+        const { fileId, question, provider } = req.body || {};
+        if (!fileId || !question) return res.status(400).json({ message: 'fileId and question are required' });
+        const notes = await notesStore.getNotes(fileId);
+        if (!notes) return res.status(404).json({ message: 'Notes for fileId not found. Generate notes first.' });
+        // Use aiService to answer. Force OpenRouter for chat to avoid consuming Gemini credits.
+        const { answerQuestion } = await import('../services/aiService');
+        const answer = await answerQuestion(notes, question, 'openrouter');
+        return res.json({ answer });
+    } catch (err) {
+        console.error('Chat error:', (err as any)?.message || err);
+        return res.status(500).json({ message: 'Failed to answer question' });
+    }
+});
 
 export default router;
