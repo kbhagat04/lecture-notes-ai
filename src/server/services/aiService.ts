@@ -2,6 +2,21 @@ import { getFileBuffer, getFileMetadata } from './fileService';
 import { processLectureSlides } from './geminiService';
 import { processWithOpenRouter } from './openRouterService';
 
+class ServiceError extends Error {
+    status?: number;
+    code?: string;
+    retryAfter?: number | null;
+    remaining?: number | null;
+    constructor(message: string, opts: { status?: number; code?: string; retryAfter?: number | null; remaining?: number | null } = {}) {
+        super(message);
+        this.name = 'ServiceError';
+        this.status = opts.status;
+        this.code = opts.code;
+        this.retryAfter = opts.retryAfter ?? null;
+        this.remaining = opts.remaining ?? null;
+    }
+}
+
 export const generateCleanNotes = async (fileId: string, provider?: string, model?: string): Promise<string> => {
     try {
         // Get file metadata and buffer from in-memory storage
@@ -76,14 +91,25 @@ export const answerQuestion = async (context: string, question: string, provider
                 messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }]
             }, { headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}` } });
             } catch (e: any) {
-                if (e?.response?.status === 429) {
-                    throw new Error('OpenRouter rate limit reached (429). Please try again later.');
+                // Normalize axios errors into ServiceError so upstream handlers can detect rate limits and retry info
+                const status = e?.response?.status;
+                const data = e?.response?.data || {};
+                if (status === 429) {
+                    const retryHeader = e?.response?.headers?.['retry-after'] || e?.response?.headers?.['Retry-After'];
+                    const retrySec = retryHeader ? parseInt(retryHeader, 10) : undefined;
+                    const remaining = data?.remaining ?? (e?.response?.headers?.['x-ratelimit-remaining'] ? parseInt(e.response.headers['x-ratelimit-remaining'], 10) : null);
+                    throw new ServiceError(data?.message || 'OpenRouter rate limit', { status: 429, code: 'RATE_LIMIT', retryAfter: retrySec ?? null, remaining });
                 }
-                throw e;
+                // For other response errors, wrap with available info
+                if (status) {
+                    throw new ServiceError(data?.message || `OpenRouter error ${status}`, { status, code: data?.code || 'OPENROUTER_ERROR' });
+                }
+                // Non-response errors (network) - rethrow as ServiceError
+                throw new ServiceError(e?.message || 'OpenRouter request failed');
             }
             const choice = res.data?.choices?.[0];
             const raw = choice?.message?.content ?? choice?.text ?? null;
-            if (!raw) throw new Error('Invalid OpenRouter response');
+            if (!raw) throw new ServiceError('Invalid OpenRouter response', { code: 'INVALID_RESPONSE' });
             // If OpenRouter returns structured content, extract string pieces; otherwise stringify
             let text: string;
             if (typeof raw === 'string') text = raw;
@@ -174,11 +200,23 @@ export const answerQuestion = async (context: string, question: string, provider
         if (!apiKey) throw new Error('Gemini API key not configured');
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-chat', generationConfig: { temperature: 0.2, maxOutputTokens: 1024 } });
-        const result = await model.generateContent([prompt]);
-        const response = await result.response;
-        return response.text();
+        try {
+            const result = await model.generateContent([prompt]);
+            const response = await result.response;
+            return response.text();
+        } catch (e: any) {
+            // Wrap Gemini errors as ServiceError when possible
+            const msg = e?.message || 'Gemini failed';
+            if (e?.code === 'RATE_LIMIT' || /rate limit|quota|throttl/i.test(String(msg).toLowerCase())) {
+                throw new ServiceError(msg, { status: 429, code: 'RATE_LIMIT' });
+            }
+            throw new ServiceError(msg);
+        }
     } catch (err) {
         console.error('answerQuestion error:', (err as any)?.message || err);
-        throw err;
+        // Ensure we throw ServiceError for consistent upstream handling
+        if (err instanceof ServiceError) throw err;
+        const message = err instanceof Error ? err.message : 'Answering question failed';
+        throw new ServiceError(message);
     }
 };

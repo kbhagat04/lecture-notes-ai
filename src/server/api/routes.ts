@@ -170,6 +170,30 @@ router.get('/health', (req: any, res: any) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Serve the local README.md as plain text for a simple in-app docs view
+router.get('/docs', async (req: any, res: any) => {
+        try {
+                const fs = await import('fs/promises');
+                const path = await import('path');
+                const mdLib = await import('markdown-it');
+                const root = path.resolve(process.cwd());
+                const readmePath = path.join(root, 'README.md');
+                const mdContent = await fs.readFile(readmePath, 'utf8');
+
+                const md = new mdLib.default({ html: true, linkify: true, typographer: true });
+                const htmlBody = md.render(mdContent || '');
+
+                // Return only the rendered markdown fragment so the client modal
+                // can apply site-wide theming (dark mode) and not be overridden
+                // by a standalone page's CSS.
+                const fragment = `<div class="docs-fragment">${htmlBody}</div>`;
+                res.type('text/html').send(fragment);
+        } catch (err) {
+                console.error('Failed to load README for /docs route:', (err as any)?.message || err);
+                res.status(500).json({ message: 'Failed to load docs' });
+        }
+});
+
 // Add this route to your routes
 router.post('/download-pdf', controllers.downloadNotesPdf);
 
@@ -186,7 +210,27 @@ router.post('/chat', async (req: any, res: any) => {
         return res.json({ answer });
     } catch (err) {
         console.error('Chat error:', (err as any)?.message || err);
-        return res.status(500).json({ message: 'Failed to answer question' });
+        // If the AI service returned a structured error or retry info, surface it with a suitable status code
+        const e: any = err || {};
+        const msg = e.message || 'Failed to answer question';
+
+        // Detect rate-limit-like responses even if thrown as a generic error
+        const isRateLimit = e.status === 429 || /rate limit|quota|throttl/i.test(String(msg).toLowerCase()) || e.code === 'RATE_LIMIT';
+        if (isRateLimit) {
+            const retryAfter = e.retryAfter || e.retry || null;
+            const remaining = e.remaining || null;
+            const payload: any = { message: msg, code: 'rate_limit' };
+            if (retryAfter) payload.retryAfter = retryAfter;
+            if (remaining !== null) payload.remaining = remaining;
+            return res.status(429).json(payload);
+        }
+
+        // For other known structured errors, pass through message and code when available (avoid leaking stacks)
+        if (e.code) {
+            return res.status(e.status || 500).json({ message: msg, code: e.code });
+        }
+
+        return res.status(500).json({ message: msg });
     }
 });
 

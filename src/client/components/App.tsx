@@ -3,6 +3,8 @@ import FileUpload from './FileUpload';
 import Notes from './Notes';
 import Slides from './Slides';
 const Chat = React.lazy(() => import('./Chat'));
+import ThemeToggle from './ThemeToggle';
+import Docs from './Docs';
 import axios, { AxiosError } from 'axios';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
@@ -21,13 +23,39 @@ const App = () => {
     const [fileIdState, setFileIdState] = useState<string | null>(null);
     const [pdfGenerating, setPdfGenerating] = useState(false);
     const [provider, setProvider] = useState<'gemini' | 'openrouter'>('gemini');
-    // Using Gemini 2.0 Flash - the only free model that properly supports PDF input
-    const openRouterModel = 'google/gemini-2.0-flash-exp:free';
+    // OpenRouter chat model (free) — used for in-app chat to avoid Gemini credits
+    const openRouterModel = 'openai/gpt-oss-20b:free';
+
+    // Theme: 'light' | 'dark'
+    const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+        try {
+            const t = localStorage.getItem('theme');
+            if (t === 'light' || t === 'dark') return t;
+            // default to system preference
+            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch (e) {
+            return 'light';
+        }
+    });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('theme', theme);
+        } catch (e) {
+            // ignore
+        }
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }, [theme]);
 
     // Server config flags
     const [geminiConfigured, setGeminiConfigured] = useState<boolean>(false);
     const [geminiTotal, setGeminiTotal] = useState<{ enabled: boolean; max: number; used?: number; remaining?: number }>({ enabled: false, max: 0, used: 0, remaining: 0 });
     const [resetLocal, setResetLocal] = useState<string>('');
+    const [showDocs, setShowDocs] = useState(false);
 
     // Client identifier persisted in localStorage to support per-user rate limits on the server
     const [clientId, setClientId] = React.useState<string>(() => {
@@ -176,12 +204,15 @@ const App = () => {
 
     return (
         <div className="app">
-            <header className="app-header">
+            <header className="app-header" role="banner">
                 <div className="header-content">
                     <div className="logo">
-                        <span>📚</span> Lecture Notes AI
+                        <div className="logo-main"><span>📚</span> Lecture Notes AI</div>
+                        <div className="logo-sub">Convert slides into clean study notes — fast.</div>
                     </div>
-                    <div className="provider-toggle">
+
+                    <div className="header-controls">
+                      <div className="provider-toggle">
                         <button 
                             className={`provider-btn ${provider === 'gemini' ? 'active' : ''}`}
                             onClick={() => { if (geminiConfigured && !loading) setProvider('gemini'); }}
@@ -199,21 +230,33 @@ const App = () => {
                         >
                             OpenRouter
                         </button>
-                    </div>
+                      </div>
 
-                    {/* No admin-token UI: public Gemini usage controlled by server-side GEMINI_API_KEY and rate limits */}
+                                            <div className="header-actions">
+                                                <a
+                                                    href="#"
+                                                    className="header-link"
+                                                    onClick={(e) => { e.preventDefault(); setShowDocs(true); }}
+                                                    aria-label="Open documentation"
+                                                >Docs</a>
+                                                <ThemeToggle theme={theme} setTheme={setTheme} />
+                                            </div>
+                    </div>
                 </div>
             </header>
-            
+
+            {showDocs && (
+                <Docs onClose={() => setShowDocs(false)} />
+            )}
+
             <main className="main-content">
                 <div className="hero-text">
                     <h1>Transform Slides into Notes</h1>
                     <p>Upload your lecture slides and let AI generate comprehensive, structured study notes in seconds.</p>
                 </div>
-                
+
                 <FileUpload onFileUpload={handleFileUpload} disabled={loading} />
 
-                {/* Gemini cap card below the upload area */}
                 {geminiTotal.enabled && (
                     <div className="gemini-cap-card">
                         <div className="gemini-cap-row">
